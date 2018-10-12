@@ -20,6 +20,7 @@ def validateArgument(iban_file):
 
 def readIBANsFromFile(iban_file):
 	
+	# https://stackoverflow.com/questions/3277503/in-python-how-do-i-read-a-file-line-by-line-into-a-list
 	file = open(iban_file, 'r')
 	lines = [line.rstrip('\n') for line in file]
 	return lines
