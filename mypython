@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#####################################################################
+: <<'COMMENT'
+
+
+COMMENT
+
+#####################################################################
+
+# Settings:
+DOCKER_IMAGE_NAME="python-customized:3.7.0-stretch"
+WORKING_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+######################################################################
+
+usage() { echo -e "\nUsage: mypython exec|info|shell|help"; }
+
+if [ $# -lt 1 ]; then
+	usage
+    exit 1
+fi
+
+case "$1" in
+	exec)
+		shift
+		if [[ $#  -lt 1 ]]; then
+			echo "Please provide a Python script to execute" 
+			exit 1
+		fi
+		PYTHON_SCRIPT=$1
+		shift
+		docker run -it --rm --network host -v "$WORKING_DIR":/usr/src/app -w /usr/src/app $DOCKER_IMAGE_NAME python $PYTHON_SCRIPT $@
+		;;
+	info)
+		docker run -it --rm $DOCKER_IMAGE_NAME python --version
+		echo ""
+		docker run -it --rm $DOCKER_IMAGE_NAME pip list
+		;;
+	shell)
+		docker run -it --rm $DOCKER_IMAGE_NAME python
+		;;
+	help)
+		usage
+		;;
+	*)
+		usage
+		exit 1
+		;;
+esac
