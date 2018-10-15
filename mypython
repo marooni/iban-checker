@@ -1,50 +1,74 @@
 #!/bin/bash
 
-#####################################################################
-: <<'COMMENT'
-
-
-COMMENT
 
 #####################################################################
+####  Settings                                                   ####
+#####################################################################
+export MYPY_DOCKER_IMAGE_NAME="mypython-iban-checker"
+export MYPY_INSTANCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-# Settings:
-DOCKER_IMAGE_NAME="python-customized:3.7.0-stretch"
-WORKING_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-######################################################################
+#####################################################################
+####  Constants                                                  ####
+#####################################################################
+DOCKER_IMAGE_NOT_FOUND_TEXT="Error: Docker image '$MYPY_DOCKER_IMAGE_NAME' not found."
+DOCKER_FILE_NOT_FOUND_TEXT="Error: Dockerfile '$DOCKER_FILE' does not exist"
+PYTHON_SCRIPT_NOT_FOUND_TEXT="Error: Unable to execute $PYTHON_SCRIPT. File not found."
+PYTHON_SCRIPT_MISSING_TEXT="Error: No python script to execute."
 
-usage() { echo -e "\nUsage: mypython exec|info|shell|help"; }
 
-if [ $# -lt 1 ]; then
-	usage
-    exit 1
-fi
+#####################################################################
+####  Commands                                                   ####
+#####################################################################
+function mypy_docker_image_exists() {
+	if [[ "$(docker images -q $MYPY_DOCKER_IMAGE_NAME 2> /dev/null)" == "" ]]; then
+  		echo 0
+  	else
+  		echo 1
+  	fi	
+}
 
-case "$1" in
-	exec)
-		shift
-		if [[ $#  -lt 1 ]]; then
-			echo "Please provide a Python script to execute" 
-			exit 1
-		fi
+function mypy_docker_image_build() {
+	DOCKER_FILE_DIR="$MYPY_INSTANCE_DIR/docker"
+	DOCKER_FILE="$MYPY_INSTANCE_DIR/docker/Dockerfile"
+	if [[ -e $DOCKER_FILE ]]; then
+		echo "Building docker image '$MYPY_DOCKER_IMAGE_NAME' from Dockerfile '$DOCKER_FILE'"
+		docker build -f $DOCKER_FILE -t $MYPY_DOCKER_IMAGE_NAME $DOCKER_FILE_DIR
+	else
+		echo $DOCKER_FILE_NOT_FOUND_TEXT
+	fi	
+}
+
+function mypy_info() {
+	if [[ $(mypy_docker_image_exists) -eq 1 ]]; then
+		docker run -it --rm $MYPY_DOCKER_IMAGE_NAME /bin/bash -c "python --version && echo "" && pip list"
+	else
+		echo $DOCKER_IMAGE_NOT_FOUND_TEXT
+	fi	
+}
+
+function mypy_shell() {
+	if [[ $(mypy_docker_image_exists) -eq 1 ]]; then
+		docker run -it --rm $MYPY_DOCKER_IMAGE_NAME python
+	else
+		echo $DOCKER_IMAGE_NOT_FOUND_TEXT
+	fi	
+}
+
+function mypython() {
+	if [[ $# -ge 1 ]]; then
 		PYTHON_SCRIPT=$1
-		shift
-		docker run -it --rm --network host -v "$WORKING_DIR":/usr/src/app -w /usr/src/app $DOCKER_IMAGE_NAME python $PYTHON_SCRIPT $@
-		;;
-	info)
-		docker run -it --rm $DOCKER_IMAGE_NAME python --version
-		echo ""
-		docker run -it --rm $DOCKER_IMAGE_NAME pip list
-		;;
-	shell)
-		docker run -it --rm $DOCKER_IMAGE_NAME python
-		;;
-	help)
-		usage
-		;;
-	*)
-		usage
-		exit 1
-		;;
-esac
+		if [[ -e $PYTHON_SCRIPT ]]; then
+			shift
+			if [[ $(mypy_docker_image_exists) -eq 1 ]]; then
+				docker run -it --rm --network host -v "$MYPY_INSTANCE_DIR":/usr/src/app -w /usr/src/app $MYPY_DOCKER_IMAGE_NAME python $PYTHON_SCRIPT $@
+			else
+				echo $DOCKER_IMAGE_NOT_FOUND_TEXT
+			fi
+		else
+			echo $PYTHON_SCRIPT_NOT_FOUND_TEXT
+		fi
+	else
+		echo $PYTHON_SCRIPT_MISSING_TEXT
+	fi
+}

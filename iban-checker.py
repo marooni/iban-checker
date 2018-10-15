@@ -1,7 +1,7 @@
 
 import argparse
 import os
-
+import schwifty
 
 def setupArgParser():
 
@@ -42,6 +42,13 @@ if __name__ == '__main__':
 		print('noop. Exiting.')
 		exit()	
 
+	# check IBAN
+	# https://pypi.org/project/schwifty/
 	iban_list = readIBANsFromFile(iban_file)
-	print(iban_list)
+	for i in iban_list:
+		try:
+			iban = schwifty.IBAN(i)
+			print('{0}: \tOK (BIC={1})'.format(i, iban.bic))
+		except ValueError as err:
+			print('{0}: \t{1}'.format(i, err))
 
